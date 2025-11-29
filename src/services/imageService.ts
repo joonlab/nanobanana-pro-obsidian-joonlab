@@ -1,6 +1,15 @@
 import { requestUrl } from 'obsidian';
-import { ImageGenerationResult, GenerationError, ImageStyle, PreferredLanguage, IMAGE_STYLES, LANGUAGE_NAMES } from '../types';
+import { ImageGenerationResult, GenerationError, ImageStyle, PreferredLanguage, ImageQuality, IMAGE_STYLES, LANGUAGE_NAMES } from '../types';
 import { IMAGE_GENERATION_PROMPT_TEMPLATE } from '../settingsData';
+
+// Aspect ratio to imageConfig mapping
+const ASPECT_RATIO_CONFIG: Record<ImageStyle, string> = {
+  infographic: '2:3',   // Vertical infographic
+  poster: '2:3',        // Vertical poster
+  diagram: '4:3',       // Slightly wide diagram
+  mindmap: '1:1',       // Square mindmap
+  timeline: '16:9'      // Wide timeline
+};
 
 export class ImageService {
   /**
@@ -11,7 +20,8 @@ export class ImageService {
     apiKey: string,
     model: string,
     style: ImageStyle,
-    preferredLanguage: PreferredLanguage
+    preferredLanguage: PreferredLanguage,
+    quality: ImageQuality = 'high'
   ): Promise<ImageGenerationResult> {
     if (!apiKey) {
       throw this.createError('INVALID_API_KEY', 'Google API key is not configured');
@@ -24,14 +34,25 @@ export class ImageService {
     try {
       // Language instruction mapping
       const languageInstructions: Record<PreferredLanguage, string> = {
-        ko: 'IMPORTANT: All text in the image MUST be in Korean (한국어). Titles, labels, descriptions, and all content should be written in Korean.',
-        en: 'IMPORTANT: All text in the image MUST be in English. Titles, labels, descriptions, and all content should be written in English.',
-        ja: 'IMPORTANT: All text in the image MUST be in Japanese (日本語). Titles, labels, descriptions, and all content should be written in Japanese.',
-        zh: 'IMPORTANT: All text in the image MUST be in Chinese (中文). Titles, labels, descriptions, and all content should be written in Chinese.',
-        es: 'IMPORTANT: All text in the image MUST be in Spanish (Español). Titles, labels, descriptions, and all content should be written in Spanish.',
-        fr: 'IMPORTANT: All text in the image MUST be in French (Français). Titles, labels, descriptions, and all content should be written in French.',
-        de: 'IMPORTANT: All text in the image MUST be in German (Deutsch). Titles, labels, descriptions, and all content should be written in German.'
+        ko: 'CRITICAL LANGUAGE REQUIREMENT: ALL visible text in the image MUST be written in Korean (한국어). This includes the main title, all headings, labels, annotations, descriptions, and any other text elements. Do NOT use English or any other language for any text.',
+        en: 'CRITICAL LANGUAGE REQUIREMENT: ALL visible text in the image MUST be written in English. This includes the main title, all headings, labels, annotations, descriptions, and any other text elements.',
+        ja: 'CRITICAL LANGUAGE REQUIREMENT: ALL visible text in the image MUST be written in Japanese (日本語). This includes the main title, all headings, labels, annotations, descriptions, and any other text elements. Do NOT use English or any other language for any text.',
+        zh: 'CRITICAL LANGUAGE REQUIREMENT: ALL visible text in the image MUST be written in Chinese (中文). This includes the main title, all headings, labels, annotations, descriptions, and any other text elements. Do NOT use English or any other language for any text.',
+        es: 'CRITICAL LANGUAGE REQUIREMENT: ALL visible text in the image MUST be written in Spanish (Español). This includes the main title, all headings, labels, annotations, descriptions, and any other text elements. Do NOT use English or any other language for any text.',
+        fr: 'CRITICAL LANGUAGE REQUIREMENT: ALL visible text in the image MUST be written in French (Français). This includes the main title, all headings, labels, annotations, descriptions, and any other text elements. Do NOT use English or any other language for any text.',
+        de: 'CRITICAL LANGUAGE REQUIREMENT: ALL visible text in the image MUST be written in German (Deutsch). This includes the main title, all headings, labels, annotations, descriptions, and any other text elements. Do NOT use English or any other language for any text.'
       };
+
+      // Determine image size based on quality
+      const imageSizeMap: Record<ImageQuality, string> = {
+        standard: '1K',   // 1024px
+        high: '2K',       // 2048px  
+        ultra: '4K'       // 4096px (Gemini 3 Pro only)
+      };
+
+      // Get aspect ratio based on style
+      const aspectRatio = ASPECT_RATIO_CONFIG[style];
+      const imageSize = imageSizeMap[quality];
 
       // Format the prompt with style and language
       const fullPrompt = IMAGE_GENERATION_PROMPT_TEMPLATE
@@ -39,6 +60,21 @@ export class ImageService {
         .replace('{prompt}', prompt) + '\n\n' + languageInstructions[preferredLanguage];
 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+      // Build generation config with proper image settings
+      const generationConfig: any = {
+        responseModalities: ['TEXT', 'IMAGE'],
+        imageConfig: {
+          aspectRatio: aspectRatio
+        }
+      };
+
+      // Add imageSize for Gemini 3 Pro models (supports 2K, 4K)
+      if (model.includes('gemini-3') || model.includes('gemini-2.5')) {
+        generationConfig.imageConfig.imageSize = imageSize;
+      }
+
+      console.log('Image generation config:', JSON.stringify(generationConfig, null, 2));
 
       const response = await requestUrl({
         url,
@@ -52,9 +88,7 @@ export class ImageService {
               text: fullPrompt
             }]
           }],
-          generationConfig: {
-            responseModalities: ['TEXT', 'IMAGE']
-          }
+          generationConfig
         })
       });
 

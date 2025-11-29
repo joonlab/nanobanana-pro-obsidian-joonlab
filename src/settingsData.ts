@@ -15,6 +15,7 @@ export const DEFAULT_SETTINGS: NanoBananaSettings = {
   imageModel: 'gemini-3-pro-image-preview',
   imageStyle: 'infographic',
   preferredLanguage: 'ko',
+  imageQuality: 'high',  // 2K resolution, good balance of quality and speed
 
   // UX Settings
   showPreviewBeforeGeneration: true,

@@ -5,6 +5,9 @@ export type ImageStyle = 'infographic' | 'poster' | 'diagram' | 'mindmap' | 'tim
 
 export type PreferredLanguage = 'ko' | 'en' | 'ja' | 'zh' | 'es' | 'fr' | 'de';
 
+// Image quality/resolution settings
+export type ImageQuality = 'standard' | 'high' | 'ultra';
+
 // Plugin settings interface
 export interface NanoBananaSettings {
   // API Keys
@@ -21,6 +24,7 @@ export interface NanoBananaSettings {
   imageModel: string;
   imageStyle: ImageStyle;
   preferredLanguage: PreferredLanguage;
+  imageQuality: ImageQuality;
 
   // UX Settings
   showPreviewBeforeGeneration: boolean;
@@ -396,4 +400,10 @@ export const LANGUAGE_NAMES: Record<PreferredLanguage, string> = {
   es: 'Español (Spanish)',
   fr: 'Français (French)',
   de: 'Deutsch (German)'
+};
+
+export const QUALITY_LABELS: Record<ImageQuality, { name: string; description: string }> = {
+  standard: { name: 'Standard (1K)', description: '1024px - Fast generation, lower detail' },
+  high: { name: 'High (2K)', description: '2048px - Recommended for most use cases' },
+  ultra: { name: 'Ultra (4K)', description: '4096px - Maximum detail, Gemini 3 Pro only' }
 };

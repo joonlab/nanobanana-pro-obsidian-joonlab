@@ -44,6 +44,8 @@ var DEFAULT_SETTINGS = {
   imageModel: "gemini-3-pro-image-preview",
   imageStyle: "infographic",
   preferredLanguage: "ko",
+  imageQuality: "high",
+  // 2K resolution, good balance of quality and speed
   // UX Settings
   showPreviewBeforeGeneration: true,
   attachmentFolder: "999-Attachments",
@@ -417,6 +419,11 @@ var LANGUAGE_NAMES = {
   fr: "Fran\xE7ais (French)",
   de: "Deutsch (German)"
 };
+var QUALITY_LABELS = {
+  standard: { name: "Standard (1K)", description: "1024px - Fast generation, lower detail" },
+  high: { name: "High (2K)", description: "2048px - Recommended for most use cases" },
+  ultra: { name: "Ultra (4K)", description: "4096px - Maximum detail, Gemini 3 Pro only" }
+};
 
 // src/settings.ts
 var NanoBananaSettingTab = class extends import_obsidian.PluginSettingTab {
@@ -548,6 +555,18 @@ var NanoBananaSettingTab = class extends import_obsidian.PluginSettingTab {
       }).setValue(this.plugin.settings.preferredLanguage).onChange(async (value) => {
         this.plugin.settings.preferredLanguage = value;
         await this.plugin.saveSettings();
+      })
+    );
+    const currentQuality = QUALITY_LABELS[this.plugin.settings.imageQuality];
+    new import_obsidian.Setting(containerEl).setName("Image Quality").setDesc(currentQuality ? currentQuality.description : "Select image resolution.").addDropdown(
+      (dropdown) => dropdown.addOptions({
+        "standard": "\u{1F4F1} Standard (1K) - Fast",
+        "high": "\u{1F5A5}\uFE0F High (2K) - Recommended",
+        "ultra": "\u{1F3A8} Ultra (4K) - Maximum quality"
+      }).setValue(this.plugin.settings.imageQuality).onChange(async (value) => {
+        this.plugin.settings.imageQuality = value;
+        await this.plugin.saveSettings();
+        this.display();
       })
     );
     containerEl.createEl("h2", { text: "\u2699\uFE0F User Experience" });
@@ -833,11 +852,23 @@ ${userMessage}`
 
 // src/services/imageService.ts
 var import_obsidian3 = require("obsidian");
+var ASPECT_RATIO_CONFIG = {
+  infographic: "2:3",
+  // Vertical infographic
+  poster: "2:3",
+  // Vertical poster
+  diagram: "4:3",
+  // Slightly wide diagram
+  mindmap: "1:1",
+  // Square mindmap
+  timeline: "16:9"
+  // Wide timeline
+};
 var ImageService = class {
   /**
    * Generate an infographic image using Google Gemini
    */
-  async generateImage(prompt, apiKey, model, style, preferredLanguage) {
+  async generateImage(prompt, apiKey, model, style, preferredLanguage, quality = "high") {
     if (!apiKey) {
       throw this.createError("INVALID_API_KEY", "Google API key is not configured");
     }
@@ -846,16 +877,36 @@ var ImageService = class {
     }
     try {
       const languageInstructions = {
-        ko: "IMPORTANT: All text in the image MUST be in Korean (\uD55C\uAD6D\uC5B4). Titles, labels, descriptions, and all content should be written in Korean.",
-        en: "IMPORTANT: All text in the image MUST be in English. Titles, labels, descriptions, and all content should be written in English.",
-        ja: "IMPORTANT: All text in the image MUST be in Japanese (\u65E5\u672C\u8A9E). Titles, labels, descriptions, and all content should be written in Japanese.",
-        zh: "IMPORTANT: All text in the image MUST be in Chinese (\u4E2D\u6587). Titles, labels, descriptions, and all content should be written in Chinese.",
-        es: "IMPORTANT: All text in the image MUST be in Spanish (Espa\xF1ol). Titles, labels, descriptions, and all content should be written in Spanish.",
-        fr: "IMPORTANT: All text in the image MUST be in French (Fran\xE7ais). Titles, labels, descriptions, and all content should be written in French.",
-        de: "IMPORTANT: All text in the image MUST be in German (Deutsch). Titles, labels, descriptions, and all content should be written in German."
+        ko: "CRITICAL LANGUAGE REQUIREMENT: ALL visible text in the image MUST be written in Korean (\uD55C\uAD6D\uC5B4). This includes the main title, all headings, labels, annotations, descriptions, and any other text elements. Do NOT use English or any other language for any text.",
+        en: "CRITICAL LANGUAGE REQUIREMENT: ALL visible text in the image MUST be written in English. This includes the main title, all headings, labels, annotations, descriptions, and any other text elements.",
+        ja: "CRITICAL LANGUAGE REQUIREMENT: ALL visible text in the image MUST be written in Japanese (\u65E5\u672C\u8A9E). This includes the main title, all headings, labels, annotations, descriptions, and any other text elements. Do NOT use English or any other language for any text.",
+        zh: "CRITICAL LANGUAGE REQUIREMENT: ALL visible text in the image MUST be written in Chinese (\u4E2D\u6587). This includes the main title, all headings, labels, annotations, descriptions, and any other text elements. Do NOT use English or any other language for any text.",
+        es: "CRITICAL LANGUAGE REQUIREMENT: ALL visible text in the image MUST be written in Spanish (Espa\xF1ol). This includes the main title, all headings, labels, annotations, descriptions, and any other text elements. Do NOT use English or any other language for any text.",
+        fr: "CRITICAL LANGUAGE REQUIREMENT: ALL visible text in the image MUST be written in French (Fran\xE7ais). This includes the main title, all headings, labels, annotations, descriptions, and any other text elements. Do NOT use English or any other language for any text.",
+        de: "CRITICAL LANGUAGE REQUIREMENT: ALL visible text in the image MUST be written in German (Deutsch). This includes the main title, all headings, labels, annotations, descriptions, and any other text elements. Do NOT use English or any other language for any text."
       };
+      const imageSizeMap = {
+        standard: "1K",
+        // 1024px
+        high: "2K",
+        // 2048px  
+        ultra: "4K"
+        // 4096px (Gemini 3 Pro only)
+      };
+      const aspectRatio = ASPECT_RATIO_CONFIG[style];
+      const imageSize = imageSizeMap[quality];
       const fullPrompt = IMAGE_GENERATION_PROMPT_TEMPLATE.replace("{style}", IMAGE_STYLES[style]).replace("{prompt}", prompt) + "\n\n" + languageInstructions[preferredLanguage];
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const generationConfig = {
+        responseModalities: ["TEXT", "IMAGE"],
+        imageConfig: {
+          aspectRatio
+        }
+      };
+      if (model.includes("gemini-3") || model.includes("gemini-2.5")) {
+        generationConfig.imageConfig.imageSize = imageSize;
+      }
+      console.log("Image generation config:", JSON.stringify(generationConfig, null, 2));
       const response = await (0, import_obsidian3.requestUrl)({
         url,
         method: "POST",
@@ -868,9 +919,7 @@ var ImageService = class {
               text: fullPrompt
             }]
           }],
-          generationConfig: {
-            responseModalities: ["TEXT", "IMAGE"]
-          }
+          generationConfig
         })
       });
       if (response.status !== 200) {
@@ -1467,7 +1516,8 @@ ${finalPrompt}`;
           this.settings.googleApiKey,
           this.settings.imageModel,
           this.settings.imageStyle,
-          this.settings.preferredLanguage
+          this.settings.preferredLanguage,
+          this.settings.imageQuality
         );
       });
       this.updateProgress(progressModal, {
@@ -1585,7 +1635,8 @@ ${finalPrompt}`;
           this.settings.googleApiKey,
           this.settings.imageModel,
           this.settings.imageStyle,
-          this.settings.preferredLanguage
+          this.settings.preferredLanguage,
+          this.settings.imageQuality
         );
       });
       this.updateProgress(progressModal, {

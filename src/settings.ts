@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import NanoBananaPlugin from './main';
-import { AIProvider, ImageStyle, PreferredLanguage, PROVIDER_CONFIGS, IMAGE_STYLES, LANGUAGE_NAMES, ModelInfo, getModelInfo } from './types';
+import { AIProvider, ImageStyle, PreferredLanguage, ImageQuality, PROVIDER_CONFIGS, IMAGE_STYLES, LANGUAGE_NAMES, QUALITY_LABELS, ModelInfo, getModelInfo } from './types';
 
 export class NanoBananaSettingTab extends PluginSettingTab {
   plugin: NanoBananaPlugin;
@@ -217,6 +217,24 @@ export class NanoBananaSettingTab extends PluginSettingTab {
         .onChange(async (value: PreferredLanguage) => {
           this.plugin.settings.preferredLanguage = value;
           await this.plugin.saveSettings();
+        })
+      );
+
+    const currentQuality = QUALITY_LABELS[this.plugin.settings.imageQuality];
+    new Setting(containerEl)
+      .setName('Image Quality')
+      .setDesc(currentQuality ? currentQuality.description : 'Select image resolution.')
+      .addDropdown(dropdown => dropdown
+        .addOptions({
+          'standard': '📱 Standard (1K) - Fast',
+          'high': '🖥️ High (2K) - Recommended',
+          'ultra': '🎨 Ultra (4K) - Maximum quality'
+        })
+        .setValue(this.plugin.settings.imageQuality)
+        .onChange(async (value: ImageQuality) => {
+          this.plugin.settings.imageQuality = value;
+          await this.plugin.saveSettings();
+          this.display(); // Refresh to update description
         })
       );
 

@@ -177,7 +177,8 @@ export default class NanoBananaPlugin extends Plugin {
           this.settings.googleApiKey,
           this.settings.imageModel,
           this.settings.imageStyle,
-          this.settings.preferredLanguage
+          this.settings.preferredLanguage,
+          this.settings.imageQuality
         );
       });
 
@@ -326,7 +327,8 @@ export default class NanoBananaPlugin extends Plugin {
           this.settings.googleApiKey,
           this.settings.imageModel,
           this.settings.imageStyle,
-          this.settings.preferredLanguage
+          this.settings.preferredLanguage,
+          this.settings.imageQuality
         );
       });
 
