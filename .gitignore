@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build outputs (optional - include if you want users to build themselves)
+# main.js
+
+# IDE
+.idea/
+*.swp
+*.swo
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug
+npm-debug.log*
+
+# Environment
+.env
+.env.local
