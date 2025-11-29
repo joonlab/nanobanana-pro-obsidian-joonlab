@@ -122,7 +122,9 @@ export default class NanoBananaPlugin extends Plugin {
           noteContent,
           this.settings.selectedProvider,
           this.settings.promptModel,
-          providerKey
+          providerKey,
+          this.settings.imageStyle,
+          this.settings.preferredLanguage
         );
       });
 
@@ -260,7 +262,9 @@ export default class NanoBananaPlugin extends Plugin {
         noteContent,
         this.settings.selectedProvider,
         this.settings.promptModel,
-        providerKey
+        providerKey,
+        this.settings.imageStyle,
+        this.settings.preferredLanguage
       );
 
       await navigator.clipboard.writeText(result.prompt);

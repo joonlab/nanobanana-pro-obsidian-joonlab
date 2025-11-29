@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import NanoBananaPlugin from './main';
-import { AIProvider, ImageStyle, PreferredLanguage, PROVIDER_CONFIGS, IMAGE_STYLES, LANGUAGE_NAMES } from './types';
+import { AIProvider, ImageStyle, PreferredLanguage, PROVIDER_CONFIGS, IMAGE_STYLES, LANGUAGE_NAMES, ModelInfo, getModelInfo } from './types';
 
 export class NanoBananaSettingTab extends PluginSettingTab {
   plugin: NanoBananaPlugin;
@@ -8,6 +8,17 @@ export class NanoBananaSettingTab extends PluginSettingTab {
   constructor(app: App, plugin: NanoBananaPlugin) {
     super(app, plugin);
     this.plugin = plugin;
+  }
+
+  /**
+   * Format context window size for display
+   */
+  private formatContextWindow(tokens?: number): string {
+    if (!tokens) return 'N/A';
+    if (tokens >= 1000000) {
+      return `${(tokens / 1000000).toFixed(1)}M tokens`;
+    }
+    return `${(tokens / 1000).toFixed(0)}K tokens`;
   }
 
   display(): void {
@@ -103,10 +114,10 @@ export class NanoBananaSettingTab extends PluginSettingTab {
       .setDesc('Select which AI provider to use for generating image prompts.')
       .addDropdown(dropdown => dropdown
         .addOptions({
-          'google': 'Google Gemini',
-          'openai': 'OpenAI',
-          'anthropic': 'Anthropic',
-          'xai': 'xAI (Grok)'
+          'google': '🌐 Google Gemini',
+          'openai': '🤖 OpenAI',
+          'anthropic': '🧠 Anthropic Claude',
+          'xai': '⚡ xAI Grok'
         })
         .setValue(this.plugin.settings.selectedProvider)
         .onChange(async (value: AIProvider) => {
@@ -114,22 +125,47 @@ export class NanoBananaSettingTab extends PluginSettingTab {
           // Set default model for selected provider
           this.plugin.settings.promptModel = PROVIDER_CONFIGS[value].defaultModel;
           await this.plugin.saveSettings();
-          this.display(); // Refresh to update model suggestions
+          this.display(); // Refresh to update model dropdown
         })
       );
 
     const providerConfig = PROVIDER_CONFIGS[this.plugin.settings.selectedProvider];
-    new Setting(containerEl)
+    const currentModelInfo = getModelInfo(this.plugin.settings.selectedProvider, this.plugin.settings.promptModel);
+    
+    // Build model options with tier indicators
+    const modelOptions: Record<string, string> = {};
+    providerConfig.models.forEach((model: ModelInfo) => {
+      const tierEmoji = model.tier === 'flagship' ? '⭐' : 
+                        model.tier === 'balanced' ? '⚖️' : 
+                        model.tier === 'vision' ? '👁️' : '⚡';
+      modelOptions[model.id] = `${tierEmoji} ${model.name}`;
+    });
+
+    const modelSetting = new Setting(containerEl)
       .setName('Prompt Model')
-      .setDesc(`Model to use for prompt generation. Suggestions: ${providerConfig.models.join(', ')}`)
-      .addText(text => text
-        .setPlaceholder(providerConfig.defaultModel)
+      .setDesc(currentModelInfo ? 
+        `${currentModelInfo.description} • Context: ${this.formatContextWindow(currentModelInfo.contextWindow)}` :
+        'Select a model for prompt generation')
+      .addDropdown(dropdown => dropdown
+        .addOptions(modelOptions)
         .setValue(this.plugin.settings.promptModel)
         .onChange(async (value) => {
           this.plugin.settings.promptModel = value;
           await this.plugin.saveSettings();
+          this.display(); // Refresh to update description
         })
       );
+
+    // Add model tier legend
+    const legendDiv = containerEl.createDiv({ cls: 'nanobanana-model-legend' });
+    legendDiv.innerHTML = `
+      <small style="color: var(--text-muted); display: flex; gap: 12px; margin-top: -8px; margin-bottom: 16px;">
+        <span>⭐ Flagship</span>
+        <span>⚖️ Balanced</span>
+        <span>⚡ Fast</span>
+        <span>👁️ Vision</span>
+      </small>
+    `;
 
     // ==================== Image Generation Section ====================
     containerEl.createEl('h2', { text: '🖼️ Image Generation' });

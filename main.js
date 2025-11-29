@@ -39,6 +39,7 @@ var DEFAULT_SETTINGS = {
   // Prompt Generation
   selectedProvider: "google",
   promptModel: "gemini-2.5-flash",
+  // Best price-performance ratio
   // Image Generation
   imageModel: "gemini-3-pro-image-preview",
   imageStyle: "infographic",
@@ -51,45 +52,89 @@ var DEFAULT_SETTINGS = {
   // Advanced
   customPromptPrefix: ""
 };
-var SYSTEM_PROMPT = `You are an expert visual designer and infographic creator. Your task is to analyze the given content and generate a detailed prompt for creating a visually stunning knowledge poster/infographic.
+var SYSTEM_PROMPT = `You are a world-class visual designer specializing in educational infographics, knowledge visualization, and data storytelling. You have won multiple design awards and your work has been featured in top publications.
 
-The prompt you generate will be used by an AI image generation model. Be specific about:
-1. Visual layout and composition
-2. Color scheme and style
-3. Typography hierarchy
-4. Icons and visual elements
-5. Data visualization if applicable
-6. Overall mood and aesthetic
+Your mission: Transform complex information into visually stunning, instantly understandable knowledge posters that captivate viewers and enhance learning.
 
-Generate ONLY the image prompt, no explanations or additional text.
+## Your Design Philosophy
+- **Clarity First**: Every element serves a purpose. Remove anything that doesn't enhance understanding.
+- **Visual Hierarchy**: Guide the viewer's eye naturally from most important to supporting details.
+- **Emotional Impact**: Create designs that evoke curiosity, wonder, and the joy of learning.
+- **Professional Polish**: Deliver gallery-quality work suitable for publication.
 
-Important guidelines:
-- The poster should be educational and informative
-- Use modern, clean design principles
-- Include visual representations of key concepts
-- Make it visually engaging and easy to understand
-- The text in the image should be minimal but impactful
-- Focus on visual storytelling
+## Output Requirements
+Generate ONLY the image generation prompt. No explanations, no preamble, no additional commentary.
 
-Output format: A single, detailed image generation prompt.`;
-var IMAGE_GENERATION_PROMPT_TEMPLATE = `Create a stunning, professional knowledge poster/infographic with the following specifications:
+## Prompt Structure (Follow This Exactly)
+Your prompt must include these elements in order:
 
-STYLE: {style}
+1. **Format & Orientation**: Specify poster dimensions and orientation
+2. **Visual Style**: Define the overall aesthetic (e.g., "modern minimalist", "elegant scientific", "bold editorial")
+3. **Color Palette**: Describe specific colors or color relationships
+4. **Layout Structure**: Describe the compositional framework
+5. **Typography Hierarchy**: Specify heading styles, body text treatment
+6. **Key Visual Elements**: Icons, illustrations, diagrams, or data visualizations
+7. **Content Placement**: Where key information appears
+8. **Mood & Atmosphere**: The emotional quality of the design
+9. **Quality Markers**: Include "4K", "ultra-detailed", "professional quality"
 
-CONTENT TO VISUALIZE:
+## Critical Guidelines
+- Keep text in the image MINIMAL (titles, key terms only - the visual should do the explaining)
+- Use METAPHORICAL VISUALS to represent abstract concepts
+- Create VISUAL CONNECTIONS between related ideas
+- Ensure HIGH CONTRAST for readability
+- Design for IMMEDIATE COMPREHENSION - viewer should grasp the main idea in 3 seconds
+- Include WHITE SPACE strategically for visual breathing room
+- Make it SHARE-WORTHY - something people would want to save or print
+
+## Quality Standard
+The resulting image should look like it was created by a professional design agency charging $5,000+ per poster.`;
+var IMAGE_GENERATION_PROMPT_TEMPLATE = `Create a premium, award-winning knowledge poster with these specifications:
+
+## VISUAL STYLE
+{style}
+
+## CONTENT TO VISUALIZE
 {prompt}
 
-Design requirements:
-- Modern, clean aesthetic with professional typography
-- Clear visual hierarchy with main title, subtopics, and details
-- Use icons and visual metaphors to represent concepts
-- Include subtle decorative elements that enhance readability
-- Color palette should be harmonious and professional
-- Layout should guide the eye through the information
-- Text should be minimal but impactful
-- Include visual representations of data/concepts where applicable
-- Make it suitable for educational/professional use
-- Ensure high contrast for readability`;
+## MANDATORY DESIGN SPECIFICATIONS
+
+### Layout & Composition
+- Vertical poster format, 2:3 aspect ratio
+- Golden ratio-based layout for natural visual flow
+- Clear focal point in the upper third
+- Generous margins and breathing room
+- Maximum 3-4 distinct content zones
+
+### Typography (CRITICAL)
+- Large, bold headline that captures the essence (max 5-7 words visible)
+- Elegant sans-serif for headings, clean serif or sans for any body text
+- Strong typographic hierarchy with clear size differentiation
+- Text must be crisp, readable, and properly kerned
+- Limit visible text to: 1 headline + 3-5 key terms/labels maximum
+
+### Color & Visual Treatment
+- Sophisticated, limited color palette (3-4 colors max)
+- Rich gradients or subtle textures for depth
+- Strategic use of accent color for emphasis
+- Ensure WCAG AA contrast compliance
+- Cohesive, professional color harmony
+
+### Visual Elements
+- Custom iconography or illustrations that explain concepts visually
+- Smooth, vector-quality graphics
+- Visual metaphors that make abstract ideas tangible
+- Subtle shadows, highlights, and dimensional effects
+- NO stock photo clich\xE9s - original, conceptual visuals only
+
+### Quality Requirements
+- 4K resolution, ultra-sharp details
+- Professional print-ready quality
+- Suitable for framing and display
+- Gallery-worthy aesthetic
+- Clean, polished, premium finish
+
+The final result should look like a $10,000 custom design piece from a top creative agency.`;
 
 // src/settings.ts
 var import_obsidian = require("obsidian");
@@ -99,34 +144,278 @@ var PROVIDER_CONFIGS = {
   openai: {
     name: "OpenAI",
     endpoint: "https://api.openai.com/v1/chat/completions",
-    defaultModel: "gpt-4o",
-    models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"]
+    defaultModel: "gpt-5.1",
+    models: [
+      {
+        id: "gpt-5.1",
+        name: "GPT-5.1",
+        tier: "flagship",
+        description: "Latest flagship with advanced reasoning and coding tools",
+        contextWindow: 4e5,
+        supportsVision: true
+      },
+      {
+        id: "gpt-5-pro",
+        name: "GPT-5 Pro",
+        tier: "flagship",
+        description: "Highest reasoning level for complex analysis",
+        contextWindow: 4e5,
+        supportsVision: true
+      },
+      {
+        id: "gpt-5-mini",
+        name: "GPT-5 Mini",
+        tier: "balanced",
+        description: "Cost-optimized reasoning and chat",
+        contextWindow: 4e5,
+        supportsVision: true
+      },
+      {
+        id: "gpt-5-nano",
+        name: "GPT-5 Nano",
+        tier: "fast",
+        description: "High-throughput, simple instruction-following",
+        contextWindow: 4e5
+      },
+      {
+        id: "gpt-4o",
+        name: "GPT-4o",
+        tier: "balanced",
+        description: "Reliable multimodal model with vision",
+        contextWindow: 128e3,
+        supportsVision: true
+      },
+      {
+        id: "gpt-4o-mini",
+        name: "GPT-4o Mini",
+        tier: "fast",
+        description: "Fast and cost-effective for simpler tasks",
+        contextWindow: 128e3,
+        supportsVision: true
+      },
+      {
+        id: "o3-mini",
+        name: "o3 Mini",
+        tier: "balanced",
+        description: "Fast reasoning model for STEM tasks",
+        contextWindow: 2e5
+      }
+    ]
   },
   google: {
     name: "Google Gemini",
     endpoint: "https://generativelanguage.googleapis.com/v1beta/models",
     defaultModel: "gemini-2.5-flash",
-    models: ["gemini-2.5-flash", "gemini-2.0-flash-exp", "gemini-1.5-pro", "gemini-1.5-flash"]
+    models: [
+      {
+        id: "gemini-3-pro-preview",
+        name: "Gemini 3 Pro",
+        tier: "flagship",
+        description: "Most powerful agentic model with rich visuals",
+        contextWindow: 1048576,
+        supportsVision: true
+      },
+      {
+        id: "gemini-2.5-pro",
+        name: "Gemini 2.5 Pro",
+        tier: "flagship",
+        description: "Full-featured with thinking and code execution",
+        contextWindow: 1048576,
+        supportsVision: true
+      },
+      {
+        id: "gemini-2.5-flash",
+        name: "Gemini 2.5 Flash",
+        tier: "balanced",
+        description: "Best price-performance ratio with thinking",
+        contextWindow: 1048576,
+        supportsVision: true
+      },
+      {
+        id: "gemini-2.5-flash-lite",
+        name: "Gemini 2.5 Flash-Lite",
+        tier: "fast",
+        description: "Fastest and most cost-effective option",
+        contextWindow: 1048576,
+        supportsVision: true
+      },
+      {
+        id: "gemini-2.0-flash",
+        name: "Gemini 2.0 Flash",
+        tier: "fast",
+        description: "Stable fast model for production",
+        contextWindow: 1048576,
+        supportsVision: true
+      },
+      {
+        id: "gemini-1.5-pro",
+        name: "Gemini 1.5 Pro",
+        tier: "balanced",
+        description: "Ultra long context (2M tokens)",
+        contextWindow: 2097152,
+        supportsVision: true
+      }
+    ]
   },
   anthropic: {
-    name: "Anthropic",
+    name: "Anthropic Claude",
     endpoint: "https://api.anthropic.com/v1/messages",
-    defaultModel: "claude-sonnet-4-20250514",
-    models: ["claude-sonnet-4-20250514", "claude-3-5-sonnet-20241022", "claude-3-haiku-20240307"]
+    defaultModel: "claude-sonnet-4-5-20250929",
+    models: [
+      {
+        id: "claude-opus-4-5-20251101",
+        name: "Claude 4.5 Opus",
+        tier: "flagship",
+        description: "Most powerful Claude ever, superior reasoning",
+        contextWindow: 2e5,
+        supportsVision: true
+      },
+      {
+        id: "claude-sonnet-4-5-20250929",
+        name: "Claude 4.5 Sonnet",
+        tier: "flagship",
+        description: "Best balance of power and speed",
+        contextWindow: 2e5,
+        supportsVision: true
+      },
+      {
+        id: "claude-sonnet-4-20250514",
+        name: "Claude Sonnet 4",
+        tier: "balanced",
+        description: "Excellent for complex tasks",
+        contextWindow: 2e5,
+        supportsVision: true
+      },
+      {
+        id: "claude-3-5-sonnet-20241022",
+        name: "Claude 3.5 Sonnet",
+        tier: "balanced",
+        description: "Reliable balance of speed and intelligence",
+        contextWindow: 2e5,
+        supportsVision: true
+      },
+      {
+        id: "claude-3-opus-20240229",
+        name: "Claude 3 Opus",
+        tier: "balanced",
+        description: "Powerful for complex analysis",
+        contextWindow: 2e5,
+        supportsVision: true
+      },
+      {
+        id: "claude-3-haiku-20240307",
+        name: "Claude 3 Haiku",
+        tier: "fast",
+        description: "Fastest Claude, great for simple tasks",
+        contextWindow: 2e5,
+        supportsVision: true
+      }
+    ]
   },
   xai: {
-    name: "xAI",
+    name: "xAI Grok",
     endpoint: "https://api.x.ai/v1/chat/completions",
     defaultModel: "grok-4-1-fast",
-    models: ["grok-4-1-fast", "grok-beta", "grok-2"]
+    models: [
+      {
+        id: "grok-4-1-fast",
+        name: "Grok 4.1 Fast",
+        tier: "flagship",
+        description: "Latest multimodal with function calling, 2M context",
+        contextWindow: 2e6
+      },
+      {
+        id: "grok-4-0709",
+        name: "Grok 4",
+        tier: "flagship",
+        description: "Powerful reasoning model with structured outputs",
+        contextWindow: 256e3
+      },
+      {
+        id: "grok-3",
+        name: "Grok 3",
+        tier: "balanced",
+        description: "Capable model with function calling",
+        contextWindow: 131072
+      },
+      {
+        id: "grok-3-mini",
+        name: "Grok 3 Mini",
+        tier: "balanced",
+        description: "Cost-effective with reasoning",
+        contextWindow: 131072
+      },
+      {
+        id: "grok-code-fast-1",
+        name: "Grok Code Fast",
+        tier: "fast",
+        description: "Optimized for coding tasks",
+        contextWindow: 256e3
+      },
+      {
+        id: "grok-2-vision-1212",
+        name: "Grok 2 Vision",
+        tier: "vision",
+        description: "Vision-enabled for image understanding",
+        contextWindow: 32768,
+        supportsVision: true
+      }
+    ]
   }
 };
+function getModelInfo(provider, modelId) {
+  return PROVIDER_CONFIGS[provider].models.find((m) => m.id === modelId);
+}
 var IMAGE_STYLES = {
-  infographic: "Modern infographic with icons, charts, and visual hierarchy",
-  poster: "Bold poster design with strong typography and imagery",
-  diagram: "Technical diagram with clear connections and labels",
-  mindmap: "Mind map style with central concept and branches",
-  timeline: "Timeline format showing progression and milestones"
+  infographic: `Modern data-driven infographic style:
+- Clean geometric shapes and data visualization elements
+- Icon-based explanations with connecting lines
+- Statistical charts, graphs, and comparison tables
+- Flat design with strategic 3D accents
+- Bold section dividers and visual categorization
+- Number callouts and percentage indicators
+- Professional corporate aesthetic with editorial polish`,
+  poster: `Bold editorial poster design:
+- Dramatic typography as the primary visual element
+- High-contrast color blocking
+- Powerful central imagery or abstract visualization
+- Magazine-quality layout and composition
+- Artistic negative space utilization
+- Statement-making visual hierarchy
+- Museum exhibition-worthy aesthetic`,
+  diagram: `Technical explanatory diagram style:
+- Clean flowchart and process visualization
+- Annotated components with leader lines
+- Isometric or orthographic projections where applicable
+- Blueprint/schematic aesthetic with modern refinement
+- Step-by-step visual sequences
+- Cross-sections and exploded views
+- Engineering precision with design elegance`,
+  mindmap: `Organic mind map visualization:
+- Central concept with radiating branches
+- Organic, flowing connection lines
+- Hierarchical node sizing based on importance
+- Color-coded categories and groupings
+- Illustrated icons at key nodes
+- Natural growth pattern aesthetic
+- Brain-friendly visual organization`,
+  timeline: `Elegant chronological timeline design:
+- Horizontal or vertical progression axis
+- Milestone markers with visual distinction
+- Period/era color coding
+- Event illustrations or icons
+- Clear date/time annotations
+- Historical document aesthetic with modern clarity
+- Museum exhibition panel quality`
+};
+var LANGUAGE_NAMES = {
+  ko: "\uD55C\uAD6D\uC5B4 (Korean)",
+  en: "English",
+  ja: "\u65E5\u672C\u8A9E (Japanese)",
+  zh: "\u4E2D\u6587 (Chinese)",
+  es: "Espa\xF1ol (Spanish)",
+  fr: "Fran\xE7ais (French)",
+  de: "Deutsch (German)"
 };
 
 // src/settings.ts
@@ -134,6 +423,17 @@ var NanoBananaSettingTab = class extends import_obsidian.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
+  }
+  /**
+   * Format context window size for display
+   */
+  formatContextWindow(tokens) {
+    if (!tokens)
+      return "N/A";
+    if (tokens >= 1e6) {
+      return `${(tokens / 1e6).toFixed(1)}M tokens`;
+    }
+    return `${(tokens / 1e3).toFixed(0)}K tokens`;
   }
   display() {
     const { containerEl } = this;
@@ -183,10 +483,10 @@ var NanoBananaSettingTab = class extends import_obsidian.PluginSettingTab {
     containerEl.createEl("h2", { text: "\u{1F916} Prompt Generation" });
     new import_obsidian.Setting(containerEl).setName("AI Provider").setDesc("Select which AI provider to use for generating image prompts.").addDropdown(
       (dropdown) => dropdown.addOptions({
-        "google": "Google Gemini",
-        "openai": "OpenAI",
-        "anthropic": "Anthropic",
-        "xai": "xAI (Grok)"
+        "google": "\u{1F310} Google Gemini",
+        "openai": "\u{1F916} OpenAI",
+        "anthropic": "\u{1F9E0} Anthropic Claude",
+        "xai": "\u26A1 xAI Grok"
       }).setValue(this.plugin.settings.selectedProvider).onChange(async (value) => {
         this.plugin.settings.selectedProvider = value;
         this.plugin.settings.promptModel = PROVIDER_CONFIGS[value].defaultModel;
@@ -195,12 +495,28 @@ var NanoBananaSettingTab = class extends import_obsidian.PluginSettingTab {
       })
     );
     const providerConfig = PROVIDER_CONFIGS[this.plugin.settings.selectedProvider];
-    new import_obsidian.Setting(containerEl).setName("Prompt Model").setDesc(`Model to use for prompt generation. Suggestions: ${providerConfig.models.join(", ")}`).addText(
-      (text) => text.setPlaceholder(providerConfig.defaultModel).setValue(this.plugin.settings.promptModel).onChange(async (value) => {
+    const currentModelInfo = getModelInfo(this.plugin.settings.selectedProvider, this.plugin.settings.promptModel);
+    const modelOptions = {};
+    providerConfig.models.forEach((model) => {
+      const tierEmoji = model.tier === "flagship" ? "\u2B50" : model.tier === "balanced" ? "\u2696\uFE0F" : model.tier === "vision" ? "\u{1F441}\uFE0F" : "\u26A1";
+      modelOptions[model.id] = `${tierEmoji} ${model.name}`;
+    });
+    const modelSetting = new import_obsidian.Setting(containerEl).setName("Prompt Model").setDesc(currentModelInfo ? `${currentModelInfo.description} \u2022 Context: ${this.formatContextWindow(currentModelInfo.contextWindow)}` : "Select a model for prompt generation").addDropdown(
+      (dropdown) => dropdown.addOptions(modelOptions).setValue(this.plugin.settings.promptModel).onChange(async (value) => {
         this.plugin.settings.promptModel = value;
         await this.plugin.saveSettings();
+        this.display();
       })
     );
+    const legendDiv = containerEl.createDiv({ cls: "nanobanana-model-legend" });
+    legendDiv.innerHTML = `
+      <small style="color: var(--text-muted); display: flex; gap: 12px; margin-top: -8px; margin-bottom: 16px;">
+        <span>\u2B50 Flagship</span>
+        <span>\u2696\uFE0F Balanced</span>
+        <span>\u26A1 Fast</span>
+        <span>\u{1F441}\uFE0F Vision</span>
+      </small>
+    `;
     containerEl.createEl("h2", { text: "\u{1F5BC}\uFE0F Image Generation" });
     new import_obsidian.Setting(containerEl).setName("Image Model").setDesc("Google Gemini model for image generation. Must support image output.").addText(
       (text) => text.setPlaceholder("gemini-3-pro-image-preview").setValue(this.plugin.settings.imageModel).onChange(async (value) => {
@@ -289,21 +605,48 @@ var NanoBananaSettingTab = class extends import_obsidian.PluginSettingTab {
 
 // src/services/promptService.ts
 var import_obsidian2 = require("obsidian");
+var USER_MESSAGE_TEMPLATE = `## Task
+Analyze the following content and generate a professional image generation prompt for a knowledge poster/infographic.
+
+## Content to Visualize
+---
+{content}
+---
+
+## Style Preference
+{style}
+
+## Language Requirement
+The poster should use {language} for any text elements (titles, labels, annotations).
+
+## Analysis Instructions
+1. First, identify the CORE CONCEPT - what is the single most important idea?
+2. Extract 3-5 KEY SUPPORTING POINTS that explain or expand on the core concept
+3. Identify any DATA, NUMBERS, or COMPARISONS that could be visualized
+4. Consider what VISUAL METAPHORS could represent abstract ideas
+5. Determine the optimal VISUAL HIERARCHY for the information
+
+## Output
+Generate a single, detailed, professional image generation prompt that will result in a gallery-worthy knowledge poster. The prompt should be comprehensive (200-400 words) and include specific visual, compositional, and stylistic details.
+
+Remember: Generate ONLY the prompt, no explanations or preamble.`;
 var PromptService = class {
   /**
    * Generate an image prompt from note content using the specified AI provider
    */
-  async generatePrompt(noteContent, provider, model, apiKey) {
+  async generatePrompt(noteContent, provider, model, apiKey, style, language) {
     if (!apiKey) {
       throw this.createError("INVALID_API_KEY", `${PROVIDER_CONFIGS[provider].name} API key is not configured`);
     }
     if (!noteContent.trim()) {
       throw this.createError("NO_CONTENT", "Note content is empty");
     }
+    const userMessage = this.buildUserMessage(noteContent, style, language);
     try {
-      const prompt = await this.callProvider(provider, model, apiKey, noteContent);
+      const prompt = await this.callProvider(provider, model, apiKey, userMessage);
+      const cleanedPrompt = this.postProcessPrompt(prompt);
       return {
-        prompt,
+        prompt: cleanedPrompt,
         model,
         provider
       };
@@ -314,21 +657,53 @@ var PromptService = class {
       throw this.handleApiError(error, provider);
     }
   }
-  async callProvider(provider, model, apiKey, content) {
+  /**
+   * Build an enhanced user message with style and language preferences
+   */
+  buildUserMessage(content, style, language) {
+    const styleDescription = style ? IMAGE_STYLES[style] : IMAGE_STYLES["infographic"];
+    const languageName = language ? LANGUAGE_NAMES[language] : LANGUAGE_NAMES["en"];
+    const processedContent = this.preprocessContent(content);
+    return USER_MESSAGE_TEMPLATE.replace("{content}", processedContent).replace("{style}", styleDescription).replace("{language}", languageName);
+  }
+  /**
+   * Preprocess content to optimize for prompt generation
+   */
+  preprocessContent(content) {
+    let processed = content.replace(/\n{3,}/g, "\n\n").trim();
+    processed = processed.replace(/!\[.*?\]\(.*?\)/g, "");
+    processed = processed.replace(/<!--.*?-->/gs, "");
+    if (processed.length > 8e3) {
+      processed = processed.slice(0, 6e3) + "\n\n[...content truncated...]\n\n" + processed.slice(-2e3);
+    }
+    return processed;
+  }
+  /**
+   * Post-process the generated prompt to ensure quality
+   */
+  postProcessPrompt(prompt) {
+    let cleaned = prompt.replace(/^(Here's|Here is|Below is|I've created|I have created)[^:]*:/i, "").replace(/^(Sure|Certainly|Of course)[^:]*[.:]/i, "").trim();
+    cleaned = cleaned.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "");
+    if (!cleaned.match(/^(Create|Design|Generate|A |An |The )/i)) {
+      cleaned = "Create " + cleaned.charAt(0).toLowerCase() + cleaned.slice(1);
+    }
+    return cleaned.trim();
+  }
+  async callProvider(provider, model, apiKey, userMessage) {
     switch (provider) {
       case "openai":
-        return this.callOpenAI(model, apiKey, content);
+        return this.callOpenAI(model, apiKey, userMessage);
       case "google":
-        return this.callGoogle(model, apiKey, content);
+        return this.callGoogle(model, apiKey, userMessage);
       case "anthropic":
-        return this.callAnthropic(model, apiKey, content);
+        return this.callAnthropic(model, apiKey, userMessage);
       case "xai":
-        return this.callXAI(model, apiKey, content);
+        return this.callXAI(model, apiKey, userMessage);
       default:
         throw this.createError("UNKNOWN", `Unknown provider: ${provider}`);
     }
   }
-  async callOpenAI(model, apiKey, content) {
+  async callOpenAI(model, apiKey, userMessage) {
     var _a, _b, _c;
     const response = await (0, import_obsidian2.requestUrl)({
       url: "https://api.openai.com/v1/chat/completions",
@@ -341,12 +716,10 @@ var PromptService = class {
         model,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: `Create an image prompt for the following content:
-
-${content}` }
+          { role: "user", content: userMessage }
         ],
-        max_tokens: 1e3,
-        temperature: 0.7
+        max_tokens: 1500,
+        temperature: 0.75
       })
     });
     if (response.status !== 200) {
@@ -355,7 +728,7 @@ ${content}` }
     const data = response.json;
     return ((_c = (_b = (_a = data.choices[0]) == null ? void 0 : _a.message) == null ? void 0 : _b.content) == null ? void 0 : _c.trim()) || "";
   }
-  async callGoogle(model, apiKey, content) {
+  async callGoogle(model, apiKey, userMessage) {
     var _a, _b, _c, _d, _e, _f;
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     const response = await (0, import_obsidian2.requestUrl)({
@@ -369,14 +742,12 @@ ${content}` }
           parts: [{
             text: `${SYSTEM_PROMPT}
 
-Create an image prompt for the following content:
-
-${content}`
+${userMessage}`
           }]
         }],
         generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 1e3
+          temperature: 0.75,
+          maxOutputTokens: 1500
         }
       })
     });
@@ -386,7 +757,7 @@ ${content}`
     const data = response.json;
     return ((_f = (_e = (_d = (_c = (_b = (_a = data.candidates) == null ? void 0 : _a[0]) == null ? void 0 : _b.content) == null ? void 0 : _c.parts) == null ? void 0 : _d[0]) == null ? void 0 : _e.text) == null ? void 0 : _f.trim()) || "";
   }
-  async callAnthropic(model, apiKey, content) {
+  async callAnthropic(model, apiKey, userMessage) {
     var _a, _b, _c;
     const response = await (0, import_obsidian2.requestUrl)({
       url: "https://api.anthropic.com/v1/messages",
@@ -398,12 +769,10 @@ ${content}`
       },
       body: JSON.stringify({
         model,
-        max_tokens: 1e3,
+        max_tokens: 1500,
         system: SYSTEM_PROMPT,
         messages: [
-          { role: "user", content: `Create an image prompt for the following content:
-
-${content}` }
+          { role: "user", content: userMessage }
         ]
       })
     });
@@ -413,7 +782,7 @@ ${content}` }
     const data = response.json;
     return ((_c = (_b = (_a = data.content) == null ? void 0 : _a[0]) == null ? void 0 : _b.text) == null ? void 0 : _c.trim()) || "";
   }
-  async callXAI(model, apiKey, content) {
+  async callXAI(model, apiKey, userMessage) {
     var _a, _b, _c;
     const response = await (0, import_obsidian2.requestUrl)({
       url: "https://api.x.ai/v1/chat/completions",
@@ -426,12 +795,10 @@ ${content}` }
         model,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: `Create an image prompt for the following content:
-
-${content}` }
+          { role: "user", content: userMessage }
         ],
-        max_tokens: 1e3,
-        temperature: 0.7
+        max_tokens: 1500,
+        temperature: 0.75
       })
     });
     if (response.status !== 200) {
@@ -1057,7 +1424,9 @@ var NanoBananaPlugin = class extends import_obsidian7.Plugin {
           noteContent,
           this.settings.selectedProvider,
           this.settings.promptModel,
-          providerKey
+          providerKey,
+          this.settings.imageStyle,
+          this.settings.preferredLanguage
         );
       });
       let finalPrompt = promptResult.prompt;
@@ -1165,7 +1534,9 @@ ${finalPrompt}`;
         noteContent,
         this.settings.selectedProvider,
         this.settings.promptModel,
-        providerKey
+        providerKey,
+        this.settings.imageStyle,
+        this.settings.preferredLanguage
       );
       await navigator.clipboard.writeText(result.prompt);
       this.lastPrompt = result.prompt;
